@@ -1,351 +1,701 @@
-# autograder.py
-# -------------
-# Licensing Information:  You are free to use or extend these projects for
-# educational purposes provided that (1) you do not distribute or publish
-# solutions, (2) you retain this notice, and (3) you provide clear
-# attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-# 
-# Attribution Information: The Pacman AI projects were developed at UC Berkeley.
-# The core projects and autograders were primarily created by John DeNero
-# (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
-# Student side autograding was added by Brad Miller, Nick Hay, and
-# Pieter Abbeel (pabbeel@cs.berkeley.edu).
+from constraints import *
+from backtracking import bt_search, GacEnforce
+from csp import Variable, CSP
+from csp_problems import nQueens, sudokuCSP
+from sudoku import b1, b5, b6
 
+import argparse
 
-# imports from python standard library
-import grading
-import imp
-import optparse
-import os
-import re
-import sys
-import projectParams
-import random
-random.seed(0)
-try: 
-    from pacman import GameState
-except:
-    pass
+legalQs = ["q1", "q2", "q3", "q4", "q5"]
+tested = [False]*5
 
-# register arguments and set default values
-def readCommand(argv):
-    parser = optparse.OptionParser(description = 'Run public tests on student code')
-    parser.set_defaults(generateSolutions=False, edxOutput=False, muteOutput=False, printTestCase=False, noGraphics=False)
-    parser.add_option('--test-directory',
-                      dest = 'testRoot',
-                      default = 'test_cases',
-                      help = 'Root test directory which contains subdirectories corresponding to each question')
-    parser.add_option('--student-code',
-                      dest = 'studentCode',
-                      default = projectParams.STUDENT_CODE_DEFAULT,
-                      help = 'comma separated list of student code files')
-    parser.add_option('--code-directory',
-                    dest = 'codeRoot',
-                    default = "",
-                    help = 'Root directory containing the student and testClass code')
-    parser.add_option('--test-case-code',
-                      dest = 'testCaseCode',
-                      default = projectParams.PROJECT_TEST_CLASSES,
-                      help = 'class containing testClass classes for this project')
-    parser.add_option('--generate-solutions',
-                      dest = 'generateSolutions',
-                      action = 'store_true',
-                      help = 'Write solutions generated to .solution file')
-    parser.add_option('--edx-output',
-                    dest = 'edxOutput',
-                    action = 'store_true',
-                    help = 'Generate edX output files')
-    parser.add_option('--mute',
-                    dest = 'muteOutput',
-                    action = 'store_true',
-                    help = 'Mute output from executing tests')
-    parser.add_option('--print-tests', '-p',
-                    dest = 'printTestCase',
-                    action = 'store_true',
-                    help = 'Print each test case before running them.')
-    parser.add_option('--test', '-t',
-                      dest = 'runTest',
-                      default = None,
-                      help = 'Run one particular test.  Relative to test root.')
-    parser.add_option('--question', '-q',
-                    dest = 'gradeQuestion',
-                    default = None,
-                    help = 'Grade one particular question.')
-    parser.add_option('--no-graphics',
-                    dest = 'noGraphics',
-                    action = 'store_true',
-                    help = 'No graphics display for pacman games.')
-    (options, args) = parser.parse_args(argv)
-    return options
+gradeMessage = ""
+grades = [0, 0, 0, 0, 0]
+outof  = [4, 5, 7, 2, 4]
+tests = ["Q1", "Q2", "Q3", "Q4", "Q5"]
+titles = ["Q1. Table Constraint for nQueens (4 points)",
+          "Q2. Forward Checking implementation (5 points)",
+          "Q3. GacEnforce and GAC implementation (5 points)",
+          "Q4. AllDiff for Sudoku (2 points)",
+          "Q5. NValues Constraint implementation (4 points)"]
 
+def print_title(i):
+    l = max([len(t) for t in titles])
+    print "-"*l
+    print titles[i]
+    print "-"*l
 
-# confirm we should author solution files
-def confirmGenerate():
-    print 'WARNING: this action will overwrite any solution files.'
-    print 'Are you sure you want to proceed? (yes/no)'
-    while True:
-        ans = sys.stdin.readline().strip()
-        if ans == 'yes':
-            break
-        elif ans == 'no':
-            sys.exit(0)
+def print_sep(c='-'):
+    l = max([len(t) for t in titles])
+    print c*l
+
+def print_soln(s):
+    for (var, val) in s:
+        print "{} = {} ".format(var.name(), val),
+
+def question_1():
+    print_title(0)
+    tested[0] = True
+    ntests = 3
+    fails = [False]*ntests
+    #test1 constraint.check()
+    q2 = Variable("Q2", [1, 2, 3, 4, 5])
+    q5 = Variable("Q5", [1, 2, 3, 4, 5])
+    c  = QueensTableConstraint("Q2/Q5", q2, q5, 2, 5)
+    q2.setValue(2)
+    for val in q5.domain():
+        q5.setValue(val)
+        if c.check():
+            if val in [2,5]:
+                print "Queens table constraint check routine failed"
+                print "Q2={}, Q5={} not detected as falsifying constraint".format(q2.getValue(), q5.getValue())
+                fails[0] = True
         else:
-            print 'please answer either "yes" or "no"'
+            if val in [1,3,4]:
+                print "Queens table constraint check routine failed"
+                print "Q2={}, Q5={} not detected as satisfying constraint".format(q2.getValue(), q5.getValue())
+                fails[0] = True
+    if fails[0]:
+        print "Fail Q1 test 1"
+    else:
+        print "Pass Q1 test 1"
+    print_sep()
+
+    #test2 constraint.hasSupport()
+    q2.reset()
+    q3 = Variable("Q3", [1, 2, 3, 4, 5])
+    q2.pruneValue(1, None, None)
+    q2.pruneValue(4, None, None)
+    q2.pruneValue(5, None, None)
+    c = QueensTableConstraint("Q2/Q5", q2, q3, 2, 3)
+    for val in q3.domain():
+        if c.hasSupport(q3, val):
+            if val not in [1, 4, 5]:
+                print "Queens table constraint hasSupport routine failed"
+                print "Q2 current domain = {}, Q3 = {} detected to have support (doesn't)".format(q2.curDomain(), val)
+                fails[1] = True
+        else:
+            if val not in [2, 3]:
+                print "Queens table constraint hasSupport routine failed"
+                print "Q2 current domain = {}, Q3 = {} detected to not have support (does)".format(q2.curDomain(), val)
+                fails[1] = True
+    if fails[1]:
+        print "Fail Q1 test 2"
+    else:
+        print "Pass Q1 test 2"
+    print_sep()
+
+    #test3 within backtracking search
+    csp = nQueens(8, True)
+    solutions, num_nodes = bt_search('BT', csp, 'fixed', True, False)
+    if num_nodes != 1965:
+        print "Queens table constraint not working correctly. BT should explore 1965 nodes."
+        print "With your implementation it explores {}".format(num_nodes)
+        fails[2] = True
+    if len(solutions) != 92:
+        print "Queens table constraint not working correctly. BT should return 92 solutions"
+        print "With your implementation it returns {}".format(len(solutions))
+        fails[2] = True
+
+    if fails[2]:
+        print "Fail Q1 test 3"
+    else:
+        print "Pass Q1 test 3"
+
+    if any(fails):
+        grades[0] = 0
+    else:
+        grades[0] = outof[0]
+
+def question_2():
+    print_title(1)
+    tested[1] = True
+
+    fails = [False, False]
+    #test 1. Find one solution
+    csp = nQueens(8, False)
+    solutions, num_nodes = bt_search('FC', csp, 'fixed', False, False)
+    errors = csp.check(solutions)
+
+    if len(errors) > 0:
+        fails[0] = True
+        print "Fail Q2 test 1: invalid solution(s) returned by FC"
+        for err in errors:
+            print_soln(err[0])
+            print "\n", err[1]
+
+    if len(solutions) != 1:
+        fails[0] = True
+        print "Fail Q2 test 1: FC failed to return only one solution"
+        print "  returned: "
+        for s in solutions:
+            print_soln(s)
+            print ""
+    ok=True
+    for v in csp.variables():
+        if set(v.curDomain()) != set(v.domain()):
+            fails[0] = True
+            print "Fail Q2 test 1: FC failed to restore domains of variables"
+
+    if not fails[0]:
+        print "Pass Q2 test 1"
+    print_sep()
+
+    csp = nQueens(8, False)
+    solutions, num_nodes = bt_search('FC', csp, 'fixed', True, False)
+    errors=csp.check(solutions)
+
+    if len(errors) > 0:
+        fails[1] = True
+        print "Fail Q2 test 2: invalid solution(s) returned by FC"
+        for err in errors:
+            print_soln(err[0])
+            print "\n", err[1]
+
+    if len(solutions) != 92:
+        fails[1] = True
+        print "Fail Q2 test 2: FC failed to return 92 solutions"
+        print "  returned {} solutions".format(len(solutions))
+
+    ok=True
+    for v in csp.variables():
+        if set(v.curDomain()) != set(v.domain()):
+            fails[1] = True
+            print "Fail Q2 test 2: FC failed to restore domains of variables"
+
+    if not fails[1]:
+        print "Pass Q2 test 1"
+    print_sep()
+
+    if sum(fails) == 2:
+        grades[1] = 0
+    elif sum(fails) == 1:
+        grades[1] = 3
+    elif sum(fails) == 0:
+        grades[1] = outof[1]
+
+def question_3():
+    print_title(2)
+    tested[2] = True
+
+    fails = [False, False, False, False, False, False, False, False]
+    v1 = Variable('V1', [1, 2])
+    v2 = Variable('V2', [1, 2])
+    v3 = Variable('V3', [1, 2, 3, 4, 5])
+    v4 = Variable('V4', [1, 2, 3, 4, 5])
+    v5 = Variable('V5', [1, 2, 3, 4, 5])
+    v6 = Variable('V6', [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    v7 = Variable('V7', [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    v8 = Variable('V8', [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    v9 = Variable('V9', [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    vars = [v1, v2, v3, v4, v5, v6, v7, v8, v9]
+    ac = AllDiffConstraint('test9', vars)
+    testcsp = CSP('test', vars, [ac])
+    GacEnforce([ac], testcsp, None, None)
+
+    #v1.pruneValue(1, None, None)
 
 
-# TODO: Fix this so that it tracebacks work correctly
-# Looking at source of the traceback module, presuming it works
-# the same as the intepreters, it uses co_filename.  This is,
-# however, a readonly attribute.
-def setModuleName(module, filename):
-    functionType = type(confirmGenerate)
-    classType = type(optparse.Option)
-
-    for i in dir(module):
-        o = getattr(module, i)
-        if hasattr(o, '__file__'): continue
-
-        if type(o) == functionType:
-            setattr(o, '__file__', filename)
-        elif type(o) == classType:
-            setattr(o, '__file__', filename)
-            # TODO: assign member __file__'s?
-        #print i, type(o)
+    test1 = "    v1 = Variable('V1', [1, 2])\n\
+    v2 = Variable('V2', [1, 2])\n\
+    v3 = Variable('V3', [1, 2, 3, 4, 5])\n\
+    v4 = Variable('V4', [1, 2, 3, 4, 5])\n\
+    v5 = Variable('V5', [1, 2, 3, 4, 5])\n\
+    v6 = Variable('V6', [1, 2, 3, 4, 5, 6, 7, 8, 9])\n\
+    v7 = Variable('V7', [1, 2, 3, 4, 5, 6, 7, 8, 9])\n\
+    v8 = Variable('V8', [1, 2, 3, 4, 5, 6, 7, 8, 9])\n\
+    v9 = Variable('V9', [1, 2, 3, 4, 5, 6, 7, 8, 9])\n\
+    vars = [v1, v2, v3, v4, v5, v6, v7, v8, v9]\n\
+    ac = AllDiffConstraint('test9', vars)\n\
+    testcsp = CSP('test', vars, [ac])\n\
+    GacEnforce([ac], testcsp, None, None)"
 
 
-#from cStringIO import StringIO
+    soln_doms = [ set([1,2]), set([1,2]), set([3,4,5]), set([3,4,5]), set([3,4,5]),
+                  set([6, 7, 8, 9]), set([6, 7, 8, 9]), set([6, 7, 8, 9]), set([6, 7, 8, 9]) ]
 
-def loadModuleString(moduleSource):
-    # Below broken, imp doesn't believe its being passed a file:
-    #    ValueError: load_module arg#2 should be a file or None
-    #
-    #f = StringIO(moduleCodeDict[k])
-    #tmp = imp.load_module(k, f, k, (".py", "r", imp.PY_SOURCE))
-    tmp = imp.new_module(k)
-    exec moduleCodeDict[k] in tmp.__dict__
-    setModuleName(tmp, k)
-    return tmp
+    for i, v in enumerate(vars):
+        if set(v.curDomain()) != soln_doms[i]:
+            fails[0] = True
+            print "Error: {}.curDomain() == {}".format(v.name(), v.curDomain())
+            print "Correct curDomin should be == {}".format(list(soln_doms[i]))
 
-import py_compile
+    if fails[0]:
+        print "\nFail Q3 test 1\nErrors were generated on the following code:"
+        print test1
+    else:
+        print "Pass Q3 test 1"
+    print_sep()
 
-def loadModuleFile(moduleName, filePath):
-    with open(filePath, 'r') as f:
-        return imp.load_module(moduleName, f, "%s.py" % moduleName, (".py", "r", imp.PY_SOURCE))
+    v1 = Variable('V1', [1, 2])
+    v2 = Variable('V2', [1, 2])
+    v3 = Variable('V3', [1, 2, 3, 4, 5])
+    v4 = Variable('V4', [1, 2, 3, 4, 5])
+    v5 = Variable('V5', [1, 2, 3, 4, 5])
+    v6 = Variable('V6', [1, 3, 4, 5])
+    v7 = Variable('V7', [1, 3, 4, 5])
+    ac1 = AllDiffConstraint('1', [v1,v2,v3])
+    ac2 = AllDiffConstraint('1', [v1,v2,v4])
+    ac3 = AllDiffConstraint('1', [v1,v2,v5])
+    ac4 = AllDiffConstraint('1', [v3,v4,v5,v6])
+    ac5 = AllDiffConstraint('1', [v3,v4,v5,v7])
+    vars = [v1, v2, v3, v4, v5, v6, v7]
+    cnstrs = [ac1,ac2,ac3,ac4,ac5]
+    testcsp = CSP('test2', vars, cnstrs)
+    GacEnforce(cnstrs, testcsp, None, None)
+
+    test2 = "    v1 = Variable('V1', [1, 2])\n\
+    v2 = Variable('V2', [1, 2])\n\
+    v3 = Variable('V3', [1, 2, 3, 4, 5])\n\
+    v4 = Variable('V4', [1, 2, 3, 4, 5])\n\
+    v5 = Variable('V5', [1, 2, 3, 4, 5])\n\
+    v6 = Variable('V6', [1, 3, 4, 5])\n\
+    v7 = Variable('V7', [1, 3, 4, 5])\n\
+    ac1 = AllDiffConstraint('1', [v1,v2,v3])\n\
+    ac2 = AllDiffConstraint('1', [v1,v2,v4])\n\
+    ac3 = AllDiffConstraint('1', [v1,v2,v5])\n\
+    ac4 = AllDiffConstraint('1', [v3,v4,v5,v6])\n\
+    ac5 = AllDiffConstraint('1', [v3,v4,v5,v7])\n\
+    vars = [v1, v2, v3, v4, v5, v6, v7]\n\
+    cnstrs = [ac1,ac2,ac3,ac4,ac5]\n\
+    testcsp = CSP('test2', vars, cnstrs)\n\
+    GacEnforce(cnstrs, testcsp, None, None)"
+
+    soln_doms = [ set([1,2]), set([1,2]), set([3, 4, 5]), set([3,4,5]), set([3,4,5]),
+                  set([1]), set([1]) ]
+
+    #v1.pruneValue(1, None, None)
+
+    for i, v in enumerate(vars):
+        if set(v.curDomain()) != soln_doms[i]:
+            fails[1] = True
+            print "Error: {}.curDomain() == {}".format(v.name(), v.curDomain())
+            print "Correct curDomin should be == {}".format(list(soln_doms[i]))
+
+    if fails[1]:
+        print "\nFail Q3 test 2\nErrors were generated on the following code:"
+        print test2
+    else:
+        print "Pass Q3 test 2"
+    print_sep()
+
+    csp =  sudokuCSP(b1, 'neq')
+    GacEnforce(csp.constraints(), csp, None, None)
+    vars=csp.variables()
+    vars.sort(key=lambda var: var.name())
+    soln_doms = [ set([3]), set([1]), set([2]), set([5]), set([9]),
+                  set([8]), set([7]), set([6]), set([4]), set([9]), set([4]),
+                  set([6]), set([7]), set([3]), set([1]), set([2]), set([5]),
+                  set([8]), set([8]), set([7]), set([5]), set([4]), set([2]),
+                  set([6]), set([9]), set([1]), set([3]), set([5]), set([6]),
+                  set([7]), set([8]), set([4]), set([2]), set([3]), set([9]),
+                  set([1]), set([4]), set([8]), set([1]), set([3]), set([6]),
+                  set([9]), set([5]), set([7]), set([2]), set([2]), set([9]),
+                  set([3]), set([1]), set([7]), set([5]), set([4]), set([8]),
+                  set([6]), set([1]), set([3]), set([8]), set([2]), set([5]),
+                  set([7]), set([6]), set([4]), set([9]), set([6]), set([5]),
+                  set([4]), set([9]), set([1]), set([3]), set([8]), set([2]),
+                  set([7]), set([7]), set([2]), set([9]), set([6]), set([8]),
+                  set([4]), set([1]), set([3]), set([5])]
+
+    #vars[0].pruneValue(3, None, None)
+
+    for i, v in enumerate(vars):
+        if set(v.curDomain()) != soln_doms[i]:
+            fails[2] = True
+            print "Error: {}.curDomain() == {}".format(v.name(), v.curDomain())
+            print "Correct curDomin should be == {}".format(list(soln_doms[i]))
+
+    if fails[2]:
+        print "\nFail Q3 test 3\nErrors were generated on the following code:"
+        print "python2.7 sudoku.py -e -m neq 1"
+    else:
+        print "Pass Q3 test 3"
+    print_sep()
+
+    csp =  sudokuCSP(b5, 'neq')
+    GacEnforce(csp.constraints(), csp, None, None)
+    vars=csp.variables()
+    vars.sort(key=lambda var: var.name())
+    soln_doms = [ set([2, 4, 5, 8]), set([6]), set([2, 4, 5, 8]),
+                  set([1]), set([2, 5, 8]), set([3, 8]), set([7, 9]), set([3, 5, 7,
+                                                                           8]), set([3, 7, 8, 9]), set([1, 2, 5, 8]), set([1, 2, 5, 8]),
+                  set([7]), set([2, 3, 9]), set([2, 5, 6, 8]), set([3, 6, 8]),
+                  set([1, 6, 9]), set([3, 5, 6, 8]), set([4]), set([1, 5, 8]),
+                  set([9]), set([3]), set([4]), set([7]), set([6, 8]), set([1, 6]),
+                  set([5, 6, 8]), set([2]), set([2, 4, 8]), set([2, 4, 7, 8]),
+                  set([1]), set([6]), set([3]), set([9]), set([2, 4, 7]), set([2, 4,
+                                                                               7]), set([5]), set([5, 9]), set([5, 7]), set([5, 6, 9]), set([8]),
+                  set([4]), set([2]), set([1, 6, 7, 9]), set([3, 6, 7]), set([1, 3,
+                                                                              6, 7, 9]), set([3]), set([2, 4]), set([2, 4, 6, 9]), set([5]),
+                  set([1]), set([7]), set([8]), set([2, 4, 6]), set([6, 9]),
+                  set([6]), set([2, 4, 5, 8]), set([2, 4, 5, 8]), set([2, 7]),
+                  set([9]), set([4, 8]), set([3]), set([1]), set([7, 8]), set([7]),
+                  set([1, 2, 3, 4, 8]), set([2, 4, 8, 9]), set([2, 3]), set([2, 6,
+                                                                             8]), set([1, 3, 4, 6, 8]), set([5]), set([2, 4, 6, 8]), set([6,
+                                                                                                                                          8]), set([1, 2, 4, 8]), set([1, 2, 3, 4, 8]), set([2, 4, 8]),
+                  set([2, 3, 7]), set([2, 6, 8]), set([5]), set([2, 4, 6, 7]),
+                  set([9]), set([6, 7, 8]) ]
+
+    #vars[0].pruneValue(2, None, None)
+
+    for i, v in enumerate(vars):
+        if set(v.curDomain()) != soln_doms[i]:
+            fails[3] = True
+            print "Error: {}.curDomain() == {}".format(v.name(), v.curDomain())
+            print "Correct curDomin should be == {}".format(list(soln_doms[i]))
+
+    if fails[3]:
+        print "\nFail Q3 test 4\nErrors were generated on the following code:"
+        print "python2.7 sudoku.py -e -m neq 5"
+    else:
+        print "Pass Q3 test 4"
+    print_sep()
+
+    v1 = Variable('V1', [1, 2])
+    v2 = Variable('V2', [1, 2])
+    v3 = Variable('V3', [1, 2, 3, 4, 5])
+    v4 = Variable('V4', [1, 2, 3, 4, 5])
+    v5 = Variable('V5', [1, 2, 3, 4, 5])
+    v6 = Variable('V6', [1, 3, 4, 5])
+    v7 = Variable('V7', [1, 3, 4, 5])
+    ac1 = AllDiffConstraint('1', [v1,v2,v3])
+    ac2 = AllDiffConstraint('1', [v1,v2,v4])
+    ac3 = AllDiffConstraint('1', [v1,v2,v5])
+    ac4 = AllDiffConstraint('1', [v3,v4,v5,v6])
+    ac5 = AllDiffConstraint('1', [v3,v4,v5,v7])
+    neq = NeqConstraint('2', [v6,v7])
+    vars = [v1, v2, v3, v4, v5, v6, v7]
+    cnstrs = [ac1,ac2,ac3,ac4,ac5,neq]
+    testcsp = CSP('test2', vars, cnstrs)
+    val = GacEnforce(cnstrs, testcsp, None, None)
+
+    test5 = "    v1 = Variable('V1', [1, 2])\n\
+    v2 = Variable('V2', [1, 2])\n\
+    v3 = Variable('V3', [1, 2, 3, 4, 5])\n\
+    v4 = Variable('V4', [1, 2, 3, 4, 5])\n\
+    v5 = Variable('V5', [1, 2, 3, 4, 5])\n\
+    v6 = Variable('V6', [1, 3, 4, 5])\n\
+    v7 = Variable('V7', [1, 3, 4, 5])\n\
+    ac1 = AllDiffConstraint('1', [v1,v2,v3])\n\
+    ac2 = AllDiffConstraint('1', [v1,v2,v4])\n\
+    ac3 = AllDiffConstraint('1', [v1,v2,v5])\n\
+    ac4 = AllDiffConstraint('1', [v3,v4,v5,v6])\n\
+    ac5 = AllDiffConstraint('1', [v3,v4,v5,v7])\n\
+    neq = NeqConstraint('2', [v6,v7])\n\
+    vars = [v1, v2, v3, v4, v5, v6, v7]\n\
+    cnstrs = [ac1,ac2,ac3,ac4,ac5]\n\
+    testcsp = CSP('test2', vars, cnstrs)\n\
+    val = GacEnforce(cnstrs, testcsp, None, None)"
+
+    #val = 'fo'
+
+    if val != "DWO":
+        fails[4] = True
+        print "Error: GacEnforce failed to return \"DWO\" returned {} instead".format(val)
+
+    if fails[4]:
+        print "\nFail Q3 test 5\nErrors were generated on the following code:"
+        print test5
+    else:
+        print "Pass Q3 test 5"
+    print_sep()
+
+    csp = nQueens(8, False)
+    solutions, num_nodes = bt_search('GAC', csp, 'fixed', False, False)
+    errors = csp.check(solutions)
+
+    if len(errors) > 0:
+        fails[5] = True
+        print "Fail Q3 test 6: invalid solution(s) returned by GAC"
+        for err in errors:
+            print_soln(err[0])
+            print "\n", err[1]
+
+    if len(solutions) != 1:
+        fails[5] = True
+        print "Fail Q3 test 6: GAC failed to return only one solution"
+        print "  returned: "
+        for s in solutions:
+            print_soln(s)
+            print ""
+    ok=True
+    for v in csp.variables():
+        if set(v.curDomain()) != set(v.domain()):
+            fails[5] = True
+            print "Fail Q3 test 6: GAC failed to restore domains of variables"
+
+    if not fails[5]:
+        print "Pass Q3 test 6"
+    print_sep()
+
+    csp = nQueens(8, False)
+    solutions, num_nodes = bt_search('GAC', csp, 'fixed', True, False)
+    errors=csp.check(solutions)
+
+    if len(errors) > 0:
+        fails[6] = True
+        print "Fail Q3 test 7: invalid solution(s) returned by GAC"
+        for err in errors:
+            print_soln(err[0])
+            print "\n", err[1]
+
+    if len(solutions) != 92:
+        fails[6] = True
+        print "Fail Q3 test 7: GAC failed to return 92 solutions"
+        print "  returned {} solutions".format(len(solutions))
+
+    ok=True
+    for v in csp.variables():
+        if set(v.curDomain()) != set(v.domain()):
+            fails[6] = True
+            print "Fail Q3 test 7: GAC failed to restore domains of variables"
+
+    if not fails[7]:
+        print "Pass Q3 test 7"
+    print_sep()
+
+    grades[2] = 0
+    if sum(fails[:4]) == 0:
+        grades[2] += 3
+        if not fails[4]:
+            grades[2] +=1
+        if grades[2] >= 3:
+            if sum([fails[5], fails[6]]) == 0:
+                grades[2] += 3
+
+def question_4():
+    print_title(3)
+    tested[3] = True
+    fails = [False, False]
+    if not tested[2]:
+        print_sep('=')
+        print "Q4 depends on Q3, running Q3 tests"
+        question_3()
+        print_sep('=')
+
+    if grades[2] == 0:
+        grades[3] = 0
+        print "Q3 failed, cannot mark Q4"
+        return
+
+    csp =  sudokuCSP(b5, 'alldiff')
+    GacEnforce(csp.constraints(), csp, None, None)
+    vars=csp.variables()
+    vars.sort(key=lambda var: var.name())
+    soln_doms = [ set([2]), set([6]), set([4]), set([1]), set([5]),
+                  set([8]), set([9]), set([7]), set([3]), set([1]), set([8]),
+                  set([7]), set([9]), set([2]), set([3]), set([6]), set([5]),
+                  set([4]), set([5]), set([9]), set([3]), set([4]), set([7]),
+                  set([6]), set([1]), set([8]), set([2]), set([8]), set([7]),
+                  set([1]), set([6]), set([3]), set([9]), set([4]), set([2]),
+                  set([5]), set([9]), set([5]), set([6]), set([8]), set([4]),
+                  set([2]), set([7]), set([3]), set([1]), set([3]), set([4]),
+                  set([2]), set([5]), set([1]), set([7]), set([8]), set([6]),
+                  set([9]), set([6]), set([2]), set([5]), set([7]), set([9]),
+                  set([4]), set([3]), set([1]), set([8]), set([7]), set([3]),
+                  set([9]), set([2]), set([8]), set([1]), set([5]), set([4]),
+                  set([6]), set([4]), set([1]), set([8]), set([3]), set([6]),
+                  set([5]), set([2]), set([9]), set([7]) ]
+
+    #vars[0].pruneValue(3, None, None)
+
+    for i, v in enumerate(vars):
+        if set(v.curDomain()) != soln_doms[i]:
+            fails[0] = True
+            print "Error: {}.curDomain() == {}".format(v.name(), v.curDomain())
+            print "Correct curDomin should be == {}".format(list(soln_doms[i]))
+
+    if fails[0]:
+        print "\nFail Q4 test 1\nErrors were generated on the following code:"
+        print "python2.7 sudoku.py -e -m alldiff 5"
+    else:
+        print "Pass Q4 test 1"
+        print_sep()
+
+    csp =  sudokuCSP(b6, 'alldiff')
+    GacEnforce(csp.constraints(), csp, None, None)
+    vars=csp.variables()
+    vars.sort(key=lambda var: var.name())
+    soln_doms = [set([7]), set([9]), set([2]), set([1]), set([6]),
+                 set([5]), set([4, 8]), set([4, 8]),
+                 set([3]), set([3]), set([4, 8]), set([4, 8]), set([9]),
+                 set([2]), set([7]), set([5]),
+                 set([6]), set([1]), set([6]), set([5]),
+                 set([1]), set([8]), set([4]), set([3]),
+                 set([9]), set([2]), set([7]), set([4, 8]),
+                 set([3, 4, 7, 8]), set([6]), set([4, 7]),
+                 set([1]), set([9]), set([3, 4, 8]),
+                 set([5]), set([2]), set([9]), set([3, 4, 7]),
+                 set([4, 5, 7]), set([2]), set([5, 7]),
+                 set([8]), set([1, 3, 4]), set([1, 3, 4]),
+                 set([6]), set([1]), set([2]), set([4, 5, 8]),
+                 set([4, 5]), set([3]), set([6]),
+                 set([7]), set([4, 8, 9]), set([4, 9]),
+                 set([4, 5]), set([1]), set([3]), set([5, 6, 7]),
+                 set([8]), set([2]), set([4, 6]),
+                 set([4, 7, 9]), set([4, 9]), set([2, 5]), set([6]),
+                 set([9]), set([3, 5, 7]), set([5, 7]),
+                 set([4]), set([1, 2, 3]), set([1, 3, 7]), set([8]),
+                 set([2, 4, 8]), set([4, 7, 8]), set([4, 7, 8]), set([3, 6, 7]),
+                 set([9]), set([1]), set([2, 3, 4, 6]),
+                 set([3, 4, 7]), set([5])]
+    #vars[0].pruneValue(2, None, None)
+
+    for i, v in enumerate(vars):
+        if set(v.curDomain()) != soln_doms[i]:
+            fails[1] = True
+            print "Error: {}.curDomain() == {}".format(v.name(), v.curDomain())
+            print "Correct curDomin should be == {}".format(list(soln_doms[i]))
+
+    if fails[1]:
+        print "\nFail Q4 test 2\nErrors were generated on the following code:"
+        print "python2.7 sudoku.py -e -m alldiff 6"
+    else:
+        print "Pass Q4 test 1"
+        print_sep()
+
+    if any(fails):
+        grades[3] = 0
+    else:
+        grades[3] = outof[3]
 
 
-def readFile(path, root=""):
-    "Read file from disk at specified path and return as string"
-    with open(os.path.join(root, path), 'r') as handle:
-        return handle.read()
+def question_5():
+    print_title(4)
+    fails = [False]*2
+
+    test1= "    v1 = Variable('V1', [1, 2])\n\
+    v2 = Variable('V2', [1, 2])\n\
+    v3 = Variable('V3', [1, 2, 3, 4, 5])\n\
+    v4 = Variable('V4', [1, 2, 3, 4, 5])\n\
+    v5 = Variable('V5', [1, 2, 3, 4, 5])\n\
+    v6 = Variable('V6', [1, 2, 3, 4, 5, 6, 7, 8, 9])\n\
+    v7 = Variable('V7', [1, 2, 3, 4, 5, 6, 7, 8, 9])\n\
+    v8 = Variable('V8', [1, 2, 3, 4, 5, 6, 7, 8, 9])\n\
+    v9 = Variable('V9', [1, 2, 3, 4, 5, 6, 7, 8, 9])\n\
+    vars = [v1, v2, v3, v4, v5, v6, v7, v8, v9]\n\
+    nv9 = NValuesConstraint('9', vars, 9, 4, 5)\n\
+    testcsp = CSP('test', vars, [nv9])\n\
+    GacEnforce([nv9], testcsp, None, None)"
+
+    v1 = Variable('V1', [1, 2])
+    v2 = Variable('V2', [1, 2])
+    v3 = Variable('V3', [1, 2, 3, 4, 5])
+    v4 = Variable('V4', [1, 2, 3, 4, 5])
+    v5 = Variable('V5', [1, 2, 3, 4, 5])
+    v6 = Variable('V6', [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    v7 = Variable('V7', [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    v8 = Variable('V8', [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    v9 = Variable('V9', [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    vars = [v1, v2, v3, v4, v5, v6, v7, v8, v9]
+    nv9 = NValuesConstraint('9', vars, 9, 4, 5)
+    testcsp = CSP('test', vars, [nv9])
+    GacEnforce([nv9], testcsp, None, None)
+    soln_doms = [set([1, 2]), set([1, 2]), set([1, 2, 3, 4, 5]),
+                 set([1, 2, 3, 4, 5]), set([1, 2, 3, 4, 5]), set([9]),
+                 set([9]), set([9]), set([9])]
+
+    for i, v in enumerate(vars):
+        if set(v.curDomain()) != soln_doms[i]:
+            fails[0] = True
+            print "Error: {}.curDomain() == {}".format(v.name(), v.curDomain())
+            print "Correct curDomin should be == {}".format(list(soln_doms[i]))
+
+    if fails[0]:
+        print "\nFail Q5 test 1\nErrors were generated on the following code:"
+        print test1
+    else:
+        print "Pass Q5 test 1"
+        print_sep()
+
+    test2 = "    v1 = Variable('V1', [1, 2])\n\
+    v2 = Variable('V2', [1, 2])\n\
+    v3 = Variable('V3', [1, 2, 3, 4, 5])\n\
+    v4 = Variable('V4', [1, 2, 3, 4, 5])\n\
+    v5 = Variable('V5', [1, 2, 3, 4, 5])\n\
+    v6 = Variable('V6', [1, 2, 3, 4, 5, 6, 7, 8, 9])\n\
+    v7 = Variable('V7', [1, 2, 3, 4, 5, 6, 7, 8, 9])\n\
+    v8 = Variable('V8', [1, 2, 3, 4, 5, 6, 7, 8, 9])\n\
+    v9 = Variable('V9', [1, 2, 3, 4, 5, 6, 7, 8, 9])\n\
+    vars = [v1, v2, v3, v4, v5, v6, v7, v8, v9]\n\
+    nv9 = NValuesConstraint('9', vars, 9, 4, 5)\n\
+    nv1 = NValuesConstraint('1', vars, 1, 5, 5)\n\
+    testcsp = CSP('test', vars, [nv1, nv9])\n\
+    GacEnforce([nv1, nv9], testcsp, None, None)"
 
 
-#######################################################################
-# Error Hint Map
-#######################################################################
+    v1 = Variable('V1', [1, 2])
+    v2 = Variable('V2', [1, 2])
+    v3 = Variable('V3', [1, 2, 3, 4, 5])
+    v4 = Variable('V4', [1, 2, 3, 4, 5])
+    v5 = Variable('V5', [1, 2, 3, 4, 5])
+    v6 = Variable('V6', [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    v7 = Variable('V7', [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    v8 = Variable('V8', [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    v9 = Variable('V9', [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    vars = [v1, v2, v3, v4, v5, v6, v7, v8, v9]
+    nv9 = NValuesConstraint('9', vars, 9, 4, 5)
+    nv1 = NValuesConstraint('1', vars, 1, 5, 5)
+    testcsp = CSP('test', vars, [nv1, nv9])
+    GacEnforce([nv1, nv9], testcsp, None, None)
+    soln_doms = [set([1]), set([1]), set([1]), set([1]), set([1]),
+                 set([9]), set([9]), set([9]), set([9])]
 
-# TODO: use these
-ERROR_HINT_MAP = {
-  'q1': {
-    "<type 'exceptions.IndexError'>": """
-      We noticed that your project threw an IndexError on q1.
-      While many things may cause this, it may have been from
-      assuming a certain number of successors from a state space
-      or assuming a certain number of actions available from a given
-      state. Try making your code more general (no hardcoded indices)
-      and submit again!
-    """
-  },
-  'q3': {
-      "<type 'exceptions.AttributeError'>": """
-        We noticed that your project threw an AttributeError on q3.
-        While many things may cause this, it may have been from assuming
-        a certain size or structure to the state space. For example, if you have
-        a line of code assuming that the state is (x, y) and we run your code
-        on a state space with (x, y, z), this error could be thrown. Try
-        making your code more general and submit again!
+    #vars[0].pruneValue(1, None, None)
 
-    """
-  }
-}
+    for i, v in enumerate(vars):
+        if set(v.curDomain()) != soln_doms[i]:
+            fails[1] = True
+            print "Error: {}.curDomain() == {}".format(v.name(), v.curDomain())
+            print "Correct curDomin should be == {}".format(list(soln_doms[i]))
 
-import pprint
+    if fails[1]:
+        print "\nFail Q5 test 2\nErrors were generated on the following code:"
+        print test3
+    else:
+        print "Pass Q5 test 2"
+        print_sep()
 
-def splitStrings(d):
-    d2 = dict(d)
-    for k in d:
-        if k[0:2] == "__":
-            del d2[k]
-            continue
-        if d2[k].find("\n") >= 0:
-            d2[k] = d2[k].split("\n")
-    return d2
+    if not any(fails):
+        grades[4] = outof[4]
 
 
-def printTest(testDict, solutionDict):
-    pp = pprint.PrettyPrinter(indent=4)
-    print "Test case:"
-    for line in testDict["__raw_lines__"]:
-        print "   |", line
-    print "Solution:"
-    for line in solutionDict["__raw_lines__"]:
-        print "   |", line
-
-
-def runTest(testName, moduleDict, printTestCase=False, display=None):
-    import testParser
-    import testClasses
-    for module in moduleDict:
-        setattr(sys.modules[__name__], module, moduleDict[module])
-
-    testDict = testParser.TestParser(testName + ".test").parse()
-    solutionDict = testParser.TestParser(testName + ".solution").parse()
-    test_out_file = os.path.join('%s.test_output' % testName)
-    testDict['test_out_file'] = test_out_file
-    testClass = getattr(projectTestClasses, testDict['class'])
-
-    questionClass = getattr(testClasses, 'Question')
-    question = questionClass({'max_points': 0}, display)
-    testCase = testClass(question, testDict)
-
-    if printTestCase:
-        printTest(testDict, solutionDict)
-
-    # This is a fragile hack to create a stub grades object
-    grades = grading.Grades(projectParams.PROJECT_NAME, [(None,0)])
-    testCase.execute(grades, moduleDict, solutionDict)
-
-
-# returns all the tests you need to run in order to run question
-def getDepends(testParser, testRoot, question):
-    allDeps = [question]
-    questionDict = testParser.TestParser(os.path.join(testRoot, question, 'CONFIG')).parse()
-    if 'depends' in questionDict:
-        depends = questionDict['depends'].split()
-        for d in depends:
-            # run dependencies first
-            allDeps = getDepends(testParser, testRoot, d) + allDeps
-    return allDeps
-
-# get list of questions to grade
-def getTestSubdirs(testParser, testRoot, questionToGrade):
-    problemDict = testParser.TestParser(os.path.join(testRoot, 'CONFIG')).parse()
-    if questionToGrade != None:
-        questions = getDepends(testParser, testRoot, questionToGrade)
-        if len(questions) > 1:
-            print 'Note: due to dependencies, the following tests will be run: %s' % ' '.join(questions)
-        return questions
-    if 'order' in problemDict:
-        return problemDict['order'].split()
-    return sorted(os.listdir(testRoot))
-
-
-# evaluate student code
-def evaluate(generateSolutions, testRoot, moduleDict, exceptionMap=ERROR_HINT_MAP, edxOutput=False, muteOutput=False,
-            printTestCase=False, questionToGrade=None, display=None):
-    # imports of testbench code.  note that the testClasses import must follow
-    # the import of student code due to dependencies
-    import testParser
-    import testClasses
-    for module in moduleDict:
-        setattr(sys.modules[__name__], module, moduleDict[module])
-
-    questions = []
-    questionDicts = {}
-    test_subdirs = getTestSubdirs(testParser, testRoot, questionToGrade)
-    for q in test_subdirs:
-        subdir_path = os.path.join(testRoot, q)
-        if not os.path.isdir(subdir_path) or q[0] == '.':
-            continue
-
-        # create a question object
-        questionDict = testParser.TestParser(os.path.join(subdir_path, 'CONFIG')).parse()
-        questionClass = getattr(testClasses, questionDict['class'])
-        question = questionClass(questionDict, display)
-        questionDicts[q] = questionDict
-
-        # load test cases into question
-        tests = filter(lambda t: re.match('[^#~.].*\.test\Z', t), os.listdir(subdir_path))
-        tests = map(lambda t: re.match('(.*)\.test\Z', t).group(1), tests)
-        for t in sorted(tests):
-            test_file = os.path.join(subdir_path, '%s.test' % t)
-            solution_file = os.path.join(subdir_path, '%s.solution' % t)
-            test_out_file = os.path.join(subdir_path, '%s.test_output' % t)
-            testDict = testParser.TestParser(test_file).parse()
-            if testDict.get("disabled", "false").lower() == "true":
-                continue
-            testDict['test_out_file'] = test_out_file
-            testClass = getattr(projectTestClasses, testDict['class'])
-            testCase = testClass(question, testDict)
-            def makefun(testCase, solution_file):
-                if generateSolutions:
-                    # write solution file to disk
-                    return lambda grades: testCase.writeSolution(moduleDict, solution_file)
-                else:
-                    # read in solution dictionary and pass as an argument
-                    testDict = testParser.TestParser(test_file).parse()
-                    solutionDict = testParser.TestParser(solution_file).parse()
-                    if printTestCase:
-                        return lambda grades: printTest(testDict, solutionDict) or testCase.execute(grades, moduleDict, solutionDict)
-                    else:
-                        return lambda grades: testCase.execute(grades, moduleDict, solutionDict)
-            question.addTestCase(testCase, makefun(testCase, solution_file))
-
-        # Note extra function is necessary for scoping reasons
-        def makefun(question):
-            return lambda grades: question.execute(grades)
-        setattr(sys.modules[__name__], q, makefun(question))
-        questions.append((q, question.getMaxPoints()))
-
-    grades = grading.Grades(projectParams.PROJECT_NAME, questions, edxOutput=edxOutput, muteOutput=muteOutput)
-    if questionToGrade == None:
-        for q in questionDicts:
-            for prereq in questionDicts[q].get('depends', '').split():
-                grades.addPrereq(q, prereq)
-
-    grades.grade(sys.modules[__name__], bonusPic = projectParams.BONUS_PIC)
-    return grades.points
-
-
-
-def getDisplay(graphicsByDefault, options=None):
-    graphics = graphicsByDefault
-    if options is not None and options.noGraphics:
-        graphics = False
-    if graphics:
-        try:
-            import graphicsDisplay
-            return graphicsDisplay.PacmanGraphics(1, frameTime=.05)
-        except ImportError:
-            pass
-    import textDisplay
-    return textDisplay.NullGraphics()
-
-
-
+def outputGrades():
+    print_sep('=')
+    for i in range(len(grades)):
+        print "Q{} mark = {}/{}".format(i+1, grades[i], outof[i])
+        print "-"*30
+    print "Total Mark = {}/{}".format(sum(grades), sum(outof))
+    print "The mark given by the autograder is not your final mark. More tests might be run"
+    print "You are not done yet. You must also submit your assignment"
 
 if __name__ == '__main__':
-    options = readCommand(sys.argv)
-    if options.generateSolutions:
-        confirmGenerate()
-    codePaths = options.studentCode.split(',')
-    # moduleCodeDict = {}
-    # for cp in codePaths:
-    #     moduleName = re.match('.*?([^/]*)\.py', cp).group(1)
-    #     moduleCodeDict[moduleName] = readFile(cp, root=options.codeRoot)
-    # moduleCodeDict['projectTestClasses'] = readFile(options.testCaseCode, root=options.codeRoot)
-    # moduleDict = loadModuleDict(moduleCodeDict)
+    parser = argparse.ArgumentParser(description='Autograder for Assignment 3')
+    parser.add_argument("-q", "--question", help="The question (1-5) to mark")
+    args = parser.parse_args()
 
-    moduleDict = {}
-    for cp in codePaths:
-        moduleName = re.match('.*?([^/]*)\.py', cp).group(1)
-        moduleDict[moduleName] = loadModuleFile(moduleName, os.path.join(options.codeRoot, cp))
-    moduleName = re.match('.*?([^/]*)\.py', options.testCaseCode).group(1)
-    moduleDict['projectTestClasses'] = loadModuleFile(moduleName, os.path.join(options.codeRoot, options.testCaseCode))
+    if args.question:
+        if args.question not in legalQs:
+            print "Error: autograder only knows how to evaluate one of {}".format(legalQs)
+            exit(1)
 
+        if args.question == legalQs[0]:
+            question_1()
+        if args.question == legalQs[1]:
+            question_2()
+        if args.question == legalQs[2]:
+            question_3()
+        if args.question == legalQs[3]:
+            question_4()
+        if args.question == legalQs[4]:
+            question_5()
 
-    if options.runTest != None:
-        runTest(options.runTest, moduleDict, printTestCase=options.printTestCase, display=getDisplay(True, options))
     else:
-        evaluate(options.generateSolutions, options.testRoot, moduleDict,
-            edxOutput=options.edxOutput, muteOutput=options.muteOutput, printTestCase=options.printTestCase,
-            questionToGrade=options.gradeQuestion, display=getDisplay(options.gradeQuestion!=None, options))
+        question_1()
+        question_2()
+        question_3()
+        question_4()
+        question_5()
+
+    outputGrades()

@@ -1,0 +1,156 @@
+==>Trying Q1
+==> Q1 = 1
+reasonVar: Q1
+UnsignedVar: Q2
+prunedVal: 1
+reasonVar: Q1
+UnsignedVar: Q2
+prunedVal: 2
+reasonVar: Q1
+UnsignedVar: Q3
+prunedVal: 1
+reasonVar: Q1
+UnsignedVar: Q3
+prunedVal: 3
+reasonVar: Q1
+UnsignedVar: Q4
+prunedVal: 1
+reasonVar: Q1
+UnsignedVar: Q4
+prunedVal: 4
+reasonVar: Q1
+UnsignedVar: Q5
+prunedVal: 1
+reasonVar: Q1
+UnsignedVar: Q5
+prunedVal: 5
+reasonVar: Q1
+UnsignedVar: Q6
+prunedVal: 1
+reasonVar: Q1
+UnsignedVar: Q6
+prunedVal: 6
+reasonVar: Q1
+UnsignedVar: Q7
+prunedVal: 1
+reasonVar: Q1
+UnsignedVar: Q7
+prunedVal: 7
+reasonVar: Q1
+UnsignedVar: Q8
+prunedVal: 1
+reasonVar: Q1
+UnsignedVar: Q8
+prunedVal: 8
+assign 1 to Q1
+----
+==>Trying Q2
+==> Q2 = 1
+reasonVar: Q2
+UnsignedVar: Q3
+prunedVal: 2
+reasonVar: Q2
+UnsignedVar: Q4
+prunedVal: 3
+reasonVar: Q2
+UnsignedVar: Q5
+prunedVal: 4
+reasonVar: Q2
+UnsignedVar: Q6
+prunedVal: 5
+reasonVar: Q2
+UnsignedVar: Q7
+prunedVal: 6
+reasonVar: Q2
+UnsignedVar: Q8
+prunedVal: 7
+assign 1 to Q2
+----
+==>Trying Q3
+==> Q3 = 1
+reasonVar: Q3
+UnsignedVar: Q4
+prunedVal: 2
+reasonVar: Q3
+UnsignedVar: Q5
+prunedVal: 3
+reasonVar: Q3
+UnsignedVar: Q6
+prunedVal: 4
+reasonVar: Q3
+UnsignedVar: Q7
+prunedVal: 5
+reasonVar: Q3
+UnsignedVar: Q8
+prunedVal: 6
+assign 1 to Q3
+----
+==>Trying Q4
+==> Q4 = 1
+reasonVar: Q4
+UnsignedVar: Q5
+prunedVal: 2
+reasonVar: Q4
+UnsignedVar: Q6
+prunedVal: 3
+reasonVar: Q4
+UnsignedVar: Q7
+prunedVal: 4
+reasonVar: Q4
+UnsignedVar: Q8
+prunedVal: 5
+assign 1 to Q4
+----
+==>Trying Q5
+==> Q5 = 1
+reasonVar: Q5
+UnsignedVar: Q6
+prunedVal: 2
+reasonVar: Q5
+UnsignedVar: Q7
+prunedVal: 3
+reasonVar: Q5
+UnsignedVar: Q8
+prunedVal: 4
+assign 1 to Q5
+----
+==>Trying Q6
+==> Q6 = 1
+reasonVar: Q6
+UnsignedVar: Q7
+prunedVal: 2
+reasonVar: Q6
+UnsignedVar: Q8
+prunedVal: 3
+assign 1 to Q6
+----
+==>Trying Q7
+==> Q7 = 1
+reasonVar: Q7
+UnsignedVar: Q8
+prunedVal: 2
+<==falsified constraint
+
+==> Q7 = 2
+reasonVar: Q7
+UnsignedVar: Q8
+prunedVal: 2
+<==falsified constraint
+
+==> Q7 = 3
+reasonVar: Q7
+UnsignedVar: Q8
+prunedVal: 2
+<==falsified constraint
+
+==> Q7 = 4
+assign 4 to Q7
+----
+==>Trying Q8
+==> Q8 = 1
+assign 1 to Q8
+----
+8-Queens Solution Found
+Explored 8 nodes
+Solutions to 8-Queens:
+Solution #1:  Q1 = 1,  Q2 = 1,  Q3 = 1,  Q4 = 1,  Q5 = 1,  Q6 = 1,  Q7 = 4,  Q8 = 1,  
